@@ -7,11 +7,12 @@
 // Parameters: pointer to jobs, command string
 // Returns: 0 - success,1 - failure
 //**************************************************************************************
-int ExeCmd(void* jobs, char* lineSize, char* cmdString, char history_log[MAX_HISTORY][MAX_LINE_SIZE], int curr_history_slot)
+int ExeCmd(void* jobs, char* lineSize, char* cmdString, char history_log[MAX_HISTORY][MAX_LINE_SIZE], int curr_history_slot , char prev_dir)
 {
 	char* cmd; 
 	char* args[MAX_ARG];
 	char pwd[MAX_LINE_SIZE];
+	getcwd(pwd, MAX_LINE_SIZE);////////////////////////////////////////////////////////////////////////need to cheack for faliure
 	char* delimiters = " \t\n";  
 	int i = 0, num_arg = 0;
 	bool illegal_cmd = FALSE; // illegal command
@@ -37,7 +38,23 @@ int ExeCmd(void* jobs, char* lineSize, char* cmdString, char history_log[MAX_HIS
 		if (num_arg != 0) {
 			illegal_cmd = TRUE;
 		}
-		else {
+		else {// success writing the cmd. trying to exec it:
+			if (strcmp(args[1], "-") == 0) {// change dir to prev dir
+				char temp[MAX_LINE_SIZE];
+				if (chdir(prev_dir) == -1) {
+					perror("couldn't change dir");
+					return 1;
+				}
+				else {
+					strcpy(prev_dir, pwd);
+				}
+				return 0;
+			}
+			else {// changing to a regular path
+				if (chdir(args[1]) == -1) {
+
+				}
+			}
 
 		}
 	} 
@@ -59,11 +76,6 @@ int ExeCmd(void* jobs, char* lineSize, char* cmdString, char history_log[MAX_HIS
 		return 0;
 	}
 	
-	/*************************************************/
-	else if (!strcmp(cmd, "mkdir"))
-	{
-
-	}
 	/*************************************************/
 	else if (!strcmp(cmd, "history"))
 	{

@@ -31,6 +31,8 @@ int main(int argc, char *argv[])
 		strcpy(history_log[i], '\0');//cleaning history log
 	}
 	int curr_history_slot = 0;
+	char prev_dir[MAX_LINE_SIZE];
+	getcwd(prev_dir, MAX_LINE_SIZE);////////////////////////////////////////////////////////////////////////need to cheack for faliure
 	
 	//signal declaretions
 	//NOTE: the signal handlers and the function/s that sets the handler should be found in siganls.c
@@ -69,7 +71,7 @@ int main(int argc, char *argv[])
 					// background command	
 	 	if(!BgCmd(lineSize, jobs)) continue; 
 					// built in commands
-		ExeCmd(jobs, lineSize, cmdString, history_log , curr_history_slot);
+		ExeCmd(jobs, lineSize, cmdString, history_log , curr_history_slot , prev_dir);
 		
 		/* initialize for next line read*/
 		lineSize[0]='\0';
