@@ -10,10 +10,11 @@
 #include <sys/wait.h>
 #define MAX_LINE_SIZE 80
 #define MAX_ARG 20
+#define MAX_HISTORY 50
 typedef enum { FALSE , TRUE } bool;
 int ExeComp(char* lineSize);
 int BgCmd(char* lineSize, void* jobs);
-int ExeCmd(void* jobs, char* lineSize, char* cmdString);
+int ExeCmd(void* jobs, char* lineSize, char* cmdString, char history_log[MAX_HISTORY][MAX_LINE_SIZE] , int curr_history_slot);
 void ExeExternal(char *args[MAX_ARG], char* cmdString);
 #endif
 

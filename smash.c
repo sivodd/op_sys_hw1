@@ -12,6 +12,9 @@ main file. This file contains the main function of smash
 #include "signals.h"
 #define MAX_LINE_SIZE 80
 #define MAXARGS 20
+#define MAX_HISTORY 50
+
+
 
 char* L_Fg_Cmd;
 void* jobs = NULL; //This represents the list of jobs. Please change to a preferred type (e.g array of char*)
@@ -23,7 +26,13 @@ char lineSize[MAX_LINE_SIZE];
 int main(int argc, char *argv[])
 {
     char cmdString[MAX_LINE_SIZE]; 	   
-
+	char history_log[MAX_HISTORY][MAX_LINE_SIZE];
+	for (int i = 0; i < MAX_HISTORY; i++) {
+		strcpy(history_log[i], '\0');//cleaning history log
+	}
+	int curr_history_slot = 0;
+	char prev_dir[MAX_LINE_SIZE];
+	getcwd(prev_dir, MAX_LINE_SIZE);////////////////////////////////////////////////////////////////////////need to cheack for faliure
 	
 	//signal declaretions
 	//NOTE: the signal handlers and the function/s that sets the handler should be found in siganls.c
@@ -50,14 +59,19 @@ int main(int argc, char *argv[])
     	{
 	 	printf("smash > ");
 		fgets(lineSize, MAX_LINE_SIZE, stdin);
-		strcpy(cmdString, lineSize);    	
+		strcpy(cmdString, lineSize);    
 		cmdString[strlen(lineSize)-1]='\0';
+		strcpy(history_log[curr_history_slot], cmdString);//updating his with new comm
+		curr_history_slot++;//updating history indicator to a new empty slot 
+		if (curr_history_slot == MAX_HISTORY) {//cyclic indicator. if reach max, return to zero
+			curr_history_slot = 0;
+		}
 					// perform a complicated Command
 		if(!ExeComp(lineSize)) continue; 
 					// background command	
 	 	if(!BgCmd(lineSize, jobs)) continue; 
 					// built in commands
-		ExeCmd(jobs, lineSize, cmdString);
+		ExeCmd(jobs, lineSize, cmdString, history_log , curr_history_slot , prev_dir);
 		
 		/* initialize for next line read*/
 		lineSize[0]='\0';

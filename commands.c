@@ -7,11 +7,12 @@
 // Parameters: pointer to jobs, command string
 // Returns: 0 - success,1 - failure
 //**************************************************************************************
-int ExeCmd(void* jobs, char* lineSize, char* cmdString)
+int ExeCmd(void* jobs, char* lineSize, char* cmdString, char history_log[MAX_HISTORY][MAX_LINE_SIZE], int curr_history_slot , char prev_dir)
 {
 	char* cmd; 
 	char* args[MAX_ARG];
 	char pwd[MAX_LINE_SIZE];
+	getcwd(pwd, MAX_LINE_SIZE);////////////////////////////////////////////////////////////////////////need to cheack for faliure
 	char* delimiters = " \t\n";  
 	int i = 0, num_arg = 0;
 	bool illegal_cmd = FALSE; // illegal command
@@ -26,6 +27,7 @@ int ExeCmd(void* jobs, char* lineSize, char* cmdString)
 			num_arg++; 
  
 	}
+	
 /*************************************************/
 // Built in Commands PLEASE NOTE NOT ALL REQUIRED
 // ARE IN THIS CHAIN OF IF COMMANDS. PLEASE ADD
@@ -33,19 +35,66 @@ int ExeCmd(void* jobs, char* lineSize, char* cmdString)
 /*************************************************/
 	if (!strcmp(cmd, "cd") ) 
 	{
-		
+		if (num_arg != 0) {
+			illegal_cmd = TRUE;
+		}
+		else {// success writing the cmd. trying to exec it:
+			if (strcmp(args[1], "-") == 0) {// change dir to prev dir
+				char temp[MAX_LINE_SIZE];
+				if (chdir(prev_dir) == -1) {
+					perror("couldn't change dir");
+					return 1;
+				}
+				else {
+					strcpy(prev_dir, pwd);
+				}
+				return 0;
+			}
+			else {// changing to a regular path
+				if (chdir(args[1]) == -1) {
+
+				}
+			}
+
+		}
 	} 
 	
 	/*************************************************/
 	else if (!strcmp(cmd, "pwd")) 
 	{
-		
+		if (num_arg != 1) {
+			illegal_cmd = TRUE;
+		}
+		else {
+			char* pwd[MAX_LINE_SIZE];
+			if (getwd(pwd, MAX_LINE_SIZE) == NULL) {
+				perror("faild to bring pwd");
+				return 1;
+			}
+			printf("%s \n", pwd);
+		}
+		return 0;
 	}
 	
 	/*************************************************/
-	else if (!strcmp(cmd, "mkdir"))
+	else if (!strcmp(cmd, "history"))
 	{
- 		
+		if (num_arg != 0) {
+			illegal_cmd = TRUE;
+		}
+		else {
+			int iterator = curr_history_slot;
+			for (int i = 0; i < MAX_HISTORY; i++) {
+				if (strcmp(history_log[iterator], '\0') != 0) {
+					printf("%s \n", history_log[iterator]);
+				}
+				iterator++;
+				if (iterator == MAX_HISTORY) {
+					iterator = 0;
+				}
+			}
+			return 0;
+		}
 	}
 	/*************************************************/
 	
