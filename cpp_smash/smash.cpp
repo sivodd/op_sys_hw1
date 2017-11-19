@@ -17,7 +17,7 @@ main file. This file contains the main function of smash
 #define MAX_JOB_NUMBER 100
 
 using std::list;
-#include "job.h"
+
 
 job L_Fg_Cmd;
 job L_Bg_Cmd;
@@ -25,12 +25,13 @@ job L_Bg_Cmd;
 //job jobs[MAX_JOB_NUMBER];
 
 list<job> jobs; //This represents the list of jobs. Please change to a preferred type (e.g array of char*)
-job l
+
 char lineSize[MAX_LINE_SIZE];
 
 char History[50][MAX_LINE_SIZE];
 int hist_iter;
 bool hist_flag;
+char prev_dir[MAX_LINE_SIZE] = {0};
 //**************************************************************************************
 // function name: main
 // Description: main function of smash. get command from user and calls command functions
