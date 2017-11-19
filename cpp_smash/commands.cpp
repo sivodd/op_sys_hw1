@@ -32,7 +32,6 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         if (args[i] != NULL)
             num_arg++;
     }
-    char prev_dir[MAX_LINE_SIZE] = {0};
 /*************************************************/
 // Built in Commands PLEASE NOTE NOT ALL REQUIRED
 // ARE IN THIS CHAIN OF IF COMMANDS. PLEASE ADD
@@ -47,7 +46,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         else if(!strcmp(args[1], "-")) {
 //          prev_dir[0] must be / ???
             if (prev_dir[0] == 0) {
-                perror("cd - no previous dir");
+                perror("cd - no previous dir.");
                 return -1;
             }
 //          cd arg is "-"
@@ -161,6 +160,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
                     return -1;
                 }
                 else{
+                    printf("signal number %d was sent to pid %d\n", signum, iter->pid);
                     updateJobList(jobs);
                 }
             }
@@ -262,12 +262,76 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 /*************************************************/
     else if (!strcmp(cmd, "quit"))
     {
-
+        if((num_arg !=0) && (num_arg !=1) )
+            illegal_cmd = TRUE;
+        else if (num_arg == 0){
+            exit(-1);
+        }
+        //        num args is 1
+        else {
+            if (!strcmp(args[1], "kill")) {
+                int job_num = 1;
+                for (list<job>::iterator iter = jobs.begin(); iter != jobs.end(); iter++) {
+                    printf("[%d] %s - Sending SIGTERM... Done.\n", job_num, iter->name);
+                    job_num++;
+                    if (kill(iter->pid, SIGTERM) == 0) {
+//                        job is alive
+                        time_t sigTime = time(NULL);
+                        while (difftime(time(NULL), sigTime) < 5) {
+                            if (waitpid(iter->pid, NULL, WNOHANG) != 0)
+                                break;
+                        }
+                        if (waitpid(iter->pid, NULL, WNOHANG) == 0) {
+                            printf("(5 sec passed) Sending SIGKILL...\n");
+                            if (kill(iter->pid, SIGKILL) == 0) {
+                                printf("Done.\n");
+                            }
+                                // sigkill was not sent;
+                            else {
+                                perror("quit kill - SIGKILL error");
+                                return -1;
+                            }
+                        } else {
+                            printf("Done.\n");
+                        }
+                    }
+                        // sigterm wasn't sent
+                    else {
+                        perror(" quit kill - error in SIGCONT signal");
+                        return -1;
+                    }
+                }
+            } else (illegal_cmd = TRUE);
+        }
     }
 /*************************************************/
     else if (!strcmp(cmd, "mv"))
     {
-
+        if(num_arg !=2)
+            illegal_cmd = TRUE;
+        else{
+            string old_name = args[1];
+            string new_name = args[2];
+            list<job>::iterator iter2;
+            for (list<job>::iterator iter1 = jobs.begin(); iter1 != jobs.end(); iter1++ ){
+                if (!strcmp(old_name, iter1->name)){
+                    iter2 = iter1;
+                    old_name = "ok";
+                }
+                if (!strcmp((new_name,iter1->name))){
+                    new_name = "taken";
+                    break;
+                }
+            }
+            if (old_name == "ok" && new_name != "taken"){
+                printf("%s has been renamed to %s\n", iter2->name, new_name);
+                iter2->name == new_name;
+            }
+            else{
+                perror("mv - can't find old name or new name already exists.");
+                return -1;
+            }
+        }
     }
 /*************************************************/
     else // external command
