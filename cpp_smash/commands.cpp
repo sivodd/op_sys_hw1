@@ -160,7 +160,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
                     return -1;
                 }
                 else{
-                    printf("signal number %d was sent to pid %d\n", signum, iter->pid);
+                    printf("smash > signal number %d was sent to pid %d\n", signum, iter->pid);
                     updateJobList(jobs);
                 }
             }
@@ -208,7 +208,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         }
         if (L_Fg_Cmd.suspend == TRUE) {
             if (kill(L_Fg_Cmd.pid, SIGCONT) == 0) {
-                printf("SIGCONT was sent to pid %d \n", L_Fg_Cmd.pid);
+                printf("smash > signal SIGCONT was sent to pid %d \n", L_Fg_Cmd.pid);
                 L_Fg_Cmd.suspend = FALSE;
             } else {
                 perror("fg - error in SIGCONT signal ");
@@ -251,7 +251,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         }
 
         if (kill(L_Bg_Cmd.pid, SIGCONT) == 0) {
-            printf("SIGCONT was sent to pid %d \n", L_Bg_Cmd.pid);
+            printf("smash > signal SIGCONT was sent to pid %d \n", L_Bg_Cmd.pid);
             L_Bg_Cmd.suspend = FALSE;
             printf("%s\n", L_Bg_Cmd.name);
         } else {
@@ -291,13 +291,13 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
                                 perror("quit kill - SIGKILL error");
                                 return -1;
                             }
-                        } else {
+                        } else { //
                             printf("Done.\n");
                         }
                     }
                         // sigterm wasn't sent
                     else {
-                        perror(" quit kill - error in SIGCONT signal");
+                        perror(" quit kill - error in SIGTERM signal");
                         return -1;
                     }
                 }
@@ -356,28 +356,30 @@ void ExeExternal(char *args[MAX_ARG], char* cmdString)
     int pID;
     switch(pID = fork())
     {
-        case -1:
+        case -1://error, no child process is created
             // Add your code here (error)
 
-            /*
-            your code
-            */
+            perror("ExeExternal - no child process was created.");
+            return;
         case 0 :
             // Child Process
-            setpgrp();
-
             // Add your code here (execute an external command)
+            setpgrp();
+            execvp(args[0], args);
+            perror(" ExecExternal - command didn't run.");
+            if (kill(pID, SIGTERM) == 0){
+                printf("smash > signal SIGTERM was sent to pid %d\n", pID);
+            } else perror("ExecExternal - error in sending SIGTERM signal.");
+            return;
 
-            /*
-            your code
-            */
-
-        default:
+        default: // parent
             // Add your code here
-
-            /*
-            your code
-            */
+            L_Fg_Cmd.pid = pID;
+            L_Fg_Cmd.name = args[0];
+            L_Fg_Cmd.suspend = false;
+            L_Fg_Cmd.start_time = time(NULL);
+            waitpid(pID, NULL , WUNTRACED);// DO WE NEED TO CHECK THAT WAIT SUCCEDED?
+            return;
     }
 }
 //**************************************************************************************
@@ -406,24 +408,64 @@ int ExeComp(char* lineSize)
 // Parameters: command string, pointer to jobs
 // Returns: 0- BG command -1- if not
 //**************************************************************************************
-int BgCmd(char* lineSize, void* jobs)
+int BgCmd(char* lineSize, list<job>& jobs)
 {
-
-    char* Command;
-    char* delimiters = " \t\n";
+//  updateJobList();
+    string delimiters = " \t\n";
     char *args[MAX_ARG];
+
     if (lineSize[strlen(lineSize)-2] == '&')
     {
         lineSize[strlen(lineSize)-2] = '\0';
         // Add your code here (execute a in the background)
 
-        /*
-        your code
-        */
+//        check if command is complicated
+        if ((strstr(lineSize, "|")) || (strstr(lineSize, "<")) || (strstr(lineSize, ">"))
+            || (strstr(lineSize, "*")) || (strstr(lineSize, "?")) || (strstr(lineSize, ">>"))
+            || (strstr(lineSize, "|&")))
+        {
+            args[0] = (char*)"sh";
+            args[1] = (char*)"-f";
+            args[2] = (char*)"-c";
+            args[3] = lineSize;
 
+        }
+        else { // not complicated - separate command into args
+            args[0] = strtok(lineSize, delimiters);
+            if (args[0] == NULL)
+                return 0;
+
+            for (int i=1; i<MAX_ARG; i++) {
+                args[i] = strtok(NULL, delimiters);
+            }
+        }
+
+        int pID;
+        switch(pID = fork())
+        {
+            case -1:
+                // error
+                perror("BgCmd - error in fork");
+                return -1;
+            case 0 :
+                // Child Process (execute an external command)
+                setpgrp();// each chlid should execute, it changes the group id.
+                execvp(args[0], args);
+                if (kill(pID, SIGTERM) == 0){
+                    printf("smash > signal SIGTERM was sent to pid %d\n", pID);
+                }
+                else perror("BgCmd - error in sending SIGTERM signal");
+                return -1;
+
+            default: //father
+                job new_job = job(args[0], pID, time(NULL), false);
+                jobs.push_back(new_job);
+                return 0;
+        }
     }
-    return -1;
+    return -1; //command is not external& and not complicated&
 }
+
 //**************************************************************************************
 // function name: updateJobList
 // Description:
