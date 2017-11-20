@@ -4,6 +4,8 @@
 #include "job.h"
 #include <iostream>
 #include <errno.h>
+#include <unistd.h>
+/////////////////////////////////////////////////////////////////////// need to add signals.h to recognize kill command?
 using namespace std;
 using std::cerr;
 using std::endl;
@@ -19,7 +21,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
     char* cmd;
     char* args[MAX_ARG];
     char pwd[MAX_LINE_SIZE];
-    string delimiters = " \t\n";
+	char* delimiters = " \t\n";
     int i = 0, num_arg = 0;
     bool illegal_cmd = FALSE; // illegal command
     cmd = strtok(lineSize, delimiters);
@@ -74,7 +76,6 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 //          changing working dir to args[1]
             if(chdir(args[1]) == -1){
                 cerr << "smash error: > " << args[1] << "- path not found" << endl;
-                perror("");
                 return -1;
             }
 //          opened new dir - copy old pwd to prev_dir
@@ -104,9 +105,14 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         }
         else{
             if (hist_flag == TRUE){
-                for(i=0; i<50;i++)
-                    printf("%s\n", History[i+hist_iter]);
-            }
+                for(i=0; i<MAX_HISTORY;i++)
+					if (i + hist_iter >= MAX_HISTORY) {
+						printf("%s\n", History[i + hist_iter- MAX_HISTORY]);
+					}
+					else {
+						printf("%s\n", History[i + hist_iter]);
+					}
+            } 
             else {
 //              hist_iter didn't exceeded 50 iterations.
                 for (i=0; i<hist_iter; i++)
@@ -120,13 +126,18 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         if (num_arg != 0){
             illegal_cmd = TRUE;
         }
-//        update job list();
+        updateJobList(jobs);
         int job_num = 1;
-        for(list<job> ::iterator iter = jobs.begin(); iter != jobs.end(); iter++){
-            printf("[%d] %s : %d %f secs\n", job_num, iter->name, iter->pid,difftime(time(NULL), iter->start_time));
-            job_num++;
-                }
-    } // remember stopped
+        for(list<job> ::iterator iter = jobs.begin(); iter != jobs.end(); iter++){///////////////////////supposed to be only not done jobs, does  it do that?
+			if (iter->suspend == TRUE) {
+				printf("[%d] %s : %d %f secs (Stopped)\n", job_num, iter->name, iter->pid, difftime(time(NULL), iter->start_time));
+		   }
+			else {
+				printf("[%d] %s : %d %f secs\n", job_num, iter->name, iter->pid, difftime(time(NULL), iter->start_time));
+			}	
+            job_num++;///////////////////////////////////////////////////supposed the time the job is alive. you called the variable "start_time". is it realy the start?
+         }
+    } 
 /*************************************************/
     else if (!strcmp(cmd, "kill"))
     {
@@ -160,8 +171,12 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
                     return -1;
                 }
                 else{
-                    printf("smash > signal number %d was sent to pid %d\n", signum, iter->pid);
-                    updateJobList(jobs);
+                    printf("smash > signal number %d was sent to pid %d\n", signum, iter->pid);/////////////// do we need to print "smash >"
+					if (signum == SIGTSTP)
+						iter->suspend = TRUE;
+					if (signum == SIGCONT)
+						iter->suspend = FALSE;
+					updateJobList(jobs);
                 }
             }
 
@@ -179,16 +194,16 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 /*************************************************/
     else if (!strcmp(cmd, "fg"))
     {
-        job fg_job;
+       // job fg_job;
         if((num_arg != 0) && (num_arg != 1)){
             illegal_cmd = TRUE;
         }
-        else if(num_arg == 0) {
-            if (jobs.size() == 0) {
-                perror(" fg - no jobs in bg");
-                return -1;
-            }
 
+        else if(num_arg == 0) {
+			if (jobs.size() == 0) {
+				perror(" fg - no jobs in bg");
+				return -1;
+			}
             else {
                 L_Fg_Cmd = *jobs.end();
                 jobs.pop_back();
@@ -218,8 +233,8 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         printf("%s\n", L_Fg_Cmd.name);
         if (waitpid(L_Fg_Cmd.pid, NULL, WUNTRACED)== -1) {//not sure about this syntax
             perror(" fg - waitpid error");
-            return -1;
         }
+		L_Fg_Cmd.pid = - 1;
     }
 /*************************************************/
     else if (!strcmp(cmd, "bg"))
@@ -228,8 +243,17 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
             illegal_cmd = TRUE;
         }
         else if(num_arg == 0) {
-//            add last suspended to job list
-//            printf("%s\n", job name);
+			list<job>::iterator Last_job_suspended = jobs.end();
+			for (; Last_job_suspended != jobs.begin; Last_job_suspended--) {
+				if (Last_job_suspended->suspend == TRUE) {
+					break;
+				}
+			}
+			if (Last_job_suspended->suspend == FALSE) {
+				perror("no bg suspended");
+				return -1;
+			}
+			L_Bg_Cmd = *Last_job_suspended;
         }
 
         else // num args == 1
@@ -314,11 +338,11 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
             string new_name = args[2];
             list<job>::iterator iter2;
             for (list<job>::iterator iter1 = jobs.begin(); iter1 != jobs.end(); iter1++ ){
-                if (!strcmp(old_name, iter1->name)){
+                if (old_name == iter1->name){
                     iter2 = iter1;
                     old_name = "ok";
                 }
-                if (!strcmp((new_name,iter1->name))){
+                if (new_name!=iter1->name){
                     new_name = "taken";
                     break;
                 }

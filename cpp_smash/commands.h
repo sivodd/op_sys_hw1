@@ -18,7 +18,7 @@
 typedef enum {FALSE, TRUE} BOOL;
 
 int ExeComp(char* lineSize);
-int BgCmd(char* lineSize, void* jobs);
+int BgCmd(char* lineSize, list<job>& jobs);
 int ExeCmd(list<job> &jobs, char* lineSize, char* cmdString);
 void ExeExternal(char *args[MAX_ARG], char* cmdString);
 
