@@ -5,6 +5,7 @@
 #include "commands.h"
 #include <time.h>
 #include <string>
+#include "job.h"
 #include <list>
 
 using namespace std;
@@ -23,8 +24,14 @@ public:
         pid = -1;
         start_time = time(NULL);
         suspend = false;
-    };
+    }
+	job(string name, int pid, time_t start, bool suspend) {
+		this->name = name;
+		this->pid = pid;
+		this->start_time = start;
+		this->suspend = suspend;
 
+	}
 
 };
 

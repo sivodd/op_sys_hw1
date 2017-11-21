@@ -20,7 +20,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
     char* cmd;
     char* args[MAX_ARG];
     char pwd[MAX_LINE_SIZE];
-	string delimiters = " \t\n";
+	const char* delimiters = " \t\n";
     int i = 0, num_arg = 0;
     bool illegal_cmd = FALSE; // illegal command
     cmd = strtok(lineSize, delimiters);
@@ -242,12 +242,13 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
             illegal_cmd = TRUE;
         }
         else if(num_arg == 0) {
-			for (list<job>::iterator iter = jobs.end(); iter != jobs.begin(); iter--) {
-				if (iter->suspend == TRUE) {
+			list<job>::iterator iter = jobs.end();
+			for (; iter != jobs.begin(); iter--) {
+				if (iter->suspend == true) {
 					break;
 				}
 			}
-			if (iter->suspend == FALSE) {
+			if (iter->suspend == false) {
 				perror("no bg suspended");
 				return -1;
 			}
@@ -274,7 +275,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 
         if (kill(L_Bg_Cmd.pid, SIGCONT) == 0) {
             printf("smash > signal SIGCONT was sent to pid %d \n", L_Bg_Cmd.pid);
-            L_Bg_Cmd.suspend = FALSE;
+            L_Bg_Cmd.suspend = false;
 			cout << L_Bg_Cmd.name << endl;
         } else {
                 perror("bg - error in SIGCONT signal ");
@@ -285,7 +286,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
     else if (!strcmp(cmd, "quit"))
     {
         if((num_arg !=0) && (num_arg !=1) )
-            illegal_cmd = TRUE;
+            illegal_cmd = true;
         else if (num_arg == 0){
             exit(-1);
         }
@@ -323,14 +324,14 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
                         return -1;
                     }
                 }
-            } else (illegal_cmd = TRUE);
+            } else (illegal_cmd = true);
         }
     }
 /*************************************************/
     else if (!strcmp(cmd, "mv"))
     {
         if(num_arg !=2)
-            illegal_cmd = TRUE;
+            illegal_cmd = true;
         else{
             string old_name = args[1];
             string new_name = args[2];
@@ -472,7 +473,7 @@ int ExeComp(char* lineSize)
 //**************************************************************************************
 int BgCmd(char* lineSize, list<job>& jobs) {
 	//  updateJobList();
-	string delimiters = " \t\n";
+	const char* delimiters = " \t\n";
 	char *args[MAX_ARG];
 
 	if (lineSize[strlen(lineSize) - 2] == '&')
