@@ -9,6 +9,13 @@ using namespace std;
 using std::cerr;
 using std::endl;
 
+extern job L_Fg_Cmd;
+extern job L_Bg_Cmd;
+extern list<job> jobs; //This represents the list of jobs.
+extern char History[MAX_HISTORY][MAX_LINE_SIZE];
+extern int hist_iter;
+extern bool hist_flag;
+extern char prev_dir[MAX_LINE_SIZE];
 //********************************************
 // function name: ExeCmd
 // Description: interperts and executes built-in commands

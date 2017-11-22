@@ -9,12 +9,23 @@ main file. This file contains the main function of smash
 #include <string.h>
 #include <signal.h>
 #include <list>
-#include "commands.h"
-#include "job.h"
+
 #include "signals.h"
 
+#include "commands.h"
 
 using std::list;
+
+extern list<job> jobs;
+extern job L_Fg_Cmd;
+extern job L_Bg_Cmd;
+
+extern char cmdString[MAX_LINE_SIZE];
+extern char lineSize[MAX_LINE_SIZE];
+extern char History[MAX_HISTORY][MAX_LINE_SIZE];
+extern int hist_iter;
+extern bool hist_flag;
+extern char prev_dir[MAX_LINE_SIZE];
 
 
 
@@ -54,6 +65,7 @@ int main(int argc, char *argv[])
 	
 
     while (1) {
+		updateJobList(jobs);
         printf("smash > ");
         fgets(lineSize, MAX_LINE_SIZE, stdin);
         strcpy(cmdString, lineSize);

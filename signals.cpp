@@ -7,6 +7,12 @@
    Synopsis: handle the Control-C */
 #include "signals.h"
 
+
+extern job L_Fg_Cmd;
+extern job L_Bg_Cmd;
+extern list<job> jobs; //This represents the list of jobs.
+
+
    //**************************************************************************************
 // function name: signal_int_fg
 // Description: send SIGINT signal to the process in the foreground

@@ -1,5 +1,6 @@
 #ifndef _COMMANDS_H
 #define _COMMANDS_H
+
 #include <unistd.h>
 #include <stdio.h>
 #include <time.h>
@@ -10,10 +11,12 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <list>
-//include "smash.cpp"
-#include "job.h"
 
+
+#include "job.h"
+#include <list>
+using std::list;
+//extern list<job> jobs; //This represents the list of jobs.
 
 #define MAX_LINE_SIZE 80
 #define MAX_ARG 20
