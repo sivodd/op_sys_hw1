@@ -7,7 +7,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <list>
+#include <iostream>
 
+#include "job.h"
 
+void signal_int_fg(int Signal_number);
+void signal_stop_fg(int Signal_number);
 
 #endif

@@ -1,15 +1,21 @@
 //		commands.c
 //********************************************
-#include "commands.h"
-#include "job.h"
 #include <iostream>
 #include <errno.h>
 #include <unistd.h>
+#include "commands.h"
 /////////////////////////////////////////////////////////////////////// need to add signals.h to recognize kill command?
 using namespace std;
 using std::cerr;
 using std::endl;
 
+extern job L_Fg_Cmd;
+extern job L_Bg_Cmd;
+extern list<job> jobs; //This represents the list of jobs.
+extern char History[MAX_HISTORY][MAX_LINE_SIZE];
+extern int hist_iter;
+extern bool hist_flag;
+extern char prev_dir[MAX_LINE_SIZE];
 //********************************************
 // function name: ExeCmd
 // Description: interperts and executes built-in commands
@@ -21,7 +27,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
     char* cmd;
     char* args[MAX_ARG];
     char pwd[MAX_LINE_SIZE];
-	char* delimiters = " \t\n";
+	const char* delimiters = " \t\n";
     int i = 0, num_arg = 0;
     bool illegal_cmd = FALSE; // illegal command
     cmd = strtok(lineSize, delimiters);
@@ -98,28 +104,24 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         else(printf("%s\n", pwd));
     }
 /*************************************************/
-    else if (!strcmp(cmd, "history"))
-    {
-        if (num_arg!= 0){
-            illegal_cmd = TRUE;
-        }
-        else{
-            if (hist_flag == TRUE){
-                for(i=0; i<MAX_HISTORY;i++)
-					if (i + hist_iter >= MAX_HISTORY) {
-						printf("%s\n", History[i + hist_iter- MAX_HISTORY]);
-					}
-					else {
-						printf("%s\n", History[i + hist_iter]);
-					}
-            } 
-            else {
-//              hist_iter didn't exceeded 50 iterations.
-                for (i=0; i<hist_iter; i++)
-                    printf("%s\n", History[i]);
-            }
-        }
-    }
+	else if (!strcmp(cmd, "history"))
+	{
+		if (num_arg != 0) {
+			illegal_cmd = TRUE;
+		}
+		else {
+			if (hist_flag == TRUE) {
+				for (int j = 0; j<50; j++)
+					printf("%s\n", History[j + hist_iter]);
+			}
+			else {
+				//              hist_iter didn't exceeded 50 iterations.
+				for (int j = 0; j<hist_iter; j++) {
+					printf("%s\n", History[j]);
+				}
+			}
+		}
+	}
 /*************************************************/
     else if (!strcmp(cmd, "jobs"))
     {
@@ -130,12 +132,12 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         int job_num = 1;
         for(list<job> ::iterator iter = jobs.begin(); iter != jobs.end(); iter++){///////////////////////supposed to be only not done jobs, does  it do that?
 			if (iter->suspend == TRUE) {
-				printf("[%d] %s : %d %f secs (Stopped)\n", job_num, iter->name, iter->pid, difftime(time(NULL), iter->start_time));
+				cout << "[" << job_num << "] " << iter->name << " : " << iter->pid << " " << difftime(time(NULL), iter->start_time) << " secs (Stopped)" << endl;
 		   }
 			else {
-				printf("[%d] %s : %d %f secs\n", job_num, iter->name, iter->pid, difftime(time(NULL), iter->start_time));
+				cout << "[" << job_num << "] " << iter->name << " : " << iter->pid << " " << difftime(time(NULL), iter->start_time) << " secs" << endl;
 			}	
-            job_num++;///////////////////////////////////////////////////supposed the time the job is alive. you called the variable "start_time". is it realy the start?
+			job_num++;
          }
     } 
 /*************************************************/
@@ -194,7 +196,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 /*************************************************/
     else if (!strcmp(cmd, "fg"))
     {
-       // job fg_job;
+		updateJobList(jobs);
         if((num_arg != 0) && (num_arg != 1)){
             illegal_cmd = TRUE;
         }
@@ -211,11 +213,14 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         }
         else {
             int command_number = atoi(args[1]);
-            if (command_number !=0 && jobs.size() <= command_number){
+			int size = jobs.size();
+			printf("test: command_number is %d job size is: %d\n", command_number, size);
+            if ( (0 < command_number) && (size <= command_number)){
                 list<job>:: iterator iter = jobs.begin();
                 advance(iter, command_number-1);
                 L_Fg_Cmd = *iter;
                 jobs.erase(iter);
+				printf("!!!!!!!!!!!!!!alive!!!\n");	
             } else {
                 perror("fg - wrong command number");
                 return -1;
@@ -224,15 +229,15 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         if (L_Fg_Cmd.suspend == TRUE) {
             if (kill(L_Fg_Cmd.pid, SIGCONT) == 0) {
                 printf("smash > signal SIGCONT was sent to pid %d \n", L_Fg_Cmd.pid);
-                L_Fg_Cmd.suspend = FALSE;
+                L_Fg_Cmd.suspend = false;
             } else {
                 perror("fg - error in SIGCONT signal ");
                 return -1;
             }
         }
-        printf("%s\n", L_Fg_Cmd.name);
+		cout << L_Fg_Cmd.name << endl;
         if (waitpid(L_Fg_Cmd.pid, NULL, WUNTRACED)== -1) {//not sure about this syntax
-            perror(" fg - waitpid error");
+          // perror(" fg - waitpid error");
         }
 		L_Fg_Cmd.pid = - 1;
     }
@@ -243,19 +248,19 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
             illegal_cmd = TRUE;
         }
         else if(num_arg == 0) {
-			list<job>::iterator Last_job_suspended = jobs.end();
-			for (; Last_job_suspended != jobs.begin; Last_job_suspended--) {
-				if (Last_job_suspended->suspend == TRUE) {
+			list<job>::iterator iter = jobs.end();
+			for (; iter != jobs.begin(); iter--) {
+				if (iter->suspend == true) {
+					L_Bg_Cmd = *iter;
 					break;
 				}
 			}
-			if (Last_job_suspended->suspend == FALSE) {
-				perror("no bg suspended");
+			if (iter->suspend == false) {
+				perror("smash error: no bg suspended jobs");
 				return -1;
 			}
-			L_Bg_Cmd = *Last_job_suspended;
+			
         }
-
         else // num args == 1
         {
             int command_number = atoi(args[1]);
@@ -273,11 +278,11 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
                 return -1;
             }
         }
-
         if (kill(L_Bg_Cmd.pid, SIGCONT) == 0) {
             printf("smash > signal SIGCONT was sent to pid %d \n", L_Bg_Cmd.pid);
-            L_Bg_Cmd.suspend = FALSE;
-            printf("%s\n", L_Bg_Cmd.name);
+            L_Bg_Cmd.suspend = false;
+			cout << L_Bg_Cmd.name << endl;
+			return 0;
         } else {
                 perror("bg - error in SIGCONT signal ");
                 return -1;
@@ -287,7 +292,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
     else if (!strcmp(cmd, "quit"))
     {
         if((num_arg !=0) && (num_arg !=1) )
-            illegal_cmd = TRUE;
+            illegal_cmd = true;
         else if (num_arg == 0){
             exit(-1);
         }
@@ -296,7 +301,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
             if (!strcmp(args[1], "kill")) {
                 int job_num = 1;
                 for (list<job>::iterator iter = jobs.begin(); iter != jobs.end(); iter++) {
-                    printf("[%d] %s - Sending SIGTERM... Done.\n", job_num, iter->name);
+					cout << "[" << job_num << "] " << iter->name << " - Sending SIGTERM... Done." << endl;
                     job_num++;
                     if (kill(iter->pid, SIGTERM) == 0) {
 //                        job is alive
@@ -325,37 +330,24 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
                         return -1;
                     }
                 }
-            } else (illegal_cmd = TRUE);
+            } else (illegal_cmd = true);
         }
     }
 /*************************************************/
     else if (!strcmp(cmd, "mv"))
     {
         if(num_arg !=2)
-            illegal_cmd = TRUE;
-        else{
-            string old_name = args[1];
-            string new_name = args[2];
-            list<job>::iterator iter2;
-            for (list<job>::iterator iter1 = jobs.begin(); iter1 != jobs.end(); iter1++ ){
-                if (old_name == iter1->name){
-                    iter2 = iter1;
-                    old_name = "ok";
-                }
-                if (new_name!=iter1->name){
-                    new_name = "taken";
-                    break;
-                }
-            }
-            if (old_name == "ok" && new_name != "taken"){
-                printf("%s has been renamed to %s\n", iter2->name, new_name);
-                iter2->name == new_name;
-            }
-            else{
-                perror("mv - can't find old name or new name already exists.");
-                return -1;
-            }
-        }
+            illegal_cmd = true;
+		else {
+			if (rename(args[1], args[2])) {
+				perror("renaming failed");
+				return -1;
+			}
+			else {
+				cout << args[1] << " has been renamed to " << args[2] << " successfully"<< endl;
+			}
+		
+		}
     }
 /*************************************************/
     else // external command
@@ -402,7 +394,11 @@ void ExeExternal(char *args[MAX_ARG], char* cmdString)
             L_Fg_Cmd.name = args[0];
             L_Fg_Cmd.suspend = false;
             L_Fg_Cmd.start_time = time(NULL);
-            waitpid(pID, NULL , WUNTRACED);// DO WE NEED TO CHECK THAT WAIT SUCCEDED?
+			if (waitpid(pID, NULL, WUNTRACED) == -1) {
+				perror("ExecExternal: waitpid failed!!!\n");
+			}
+			L_Fg_Cmd.pid = -1;
+			L_Fg_Cmd.name = "\0";
             return;
     }
 }
@@ -416,14 +412,50 @@ int ExeComp(char* lineSize)
 {
     char ExtCmd[MAX_LINE_SIZE+2];
     char *args[MAX_ARG];
-    if ((strstr(lineSize, "|")) || (strstr(lineSize, "<")) || (strstr(lineSize, ">")) || (strstr(lineSize, "*")) || (strstr(lineSize, "?")) || (strstr(lineSize, ">>")) || (strstr(lineSize, "|&")))
-    {
-        // Add your code here (execute a complicated command)
+	if ((strstr(lineSize, "|")) || (strstr(lineSize, "<")) || (strstr(lineSize, ">"))
+		|| (strstr(lineSize, "*")) || (strstr(lineSize, "?")) || (strstr(lineSize, ">>"))
+		|| (strstr(lineSize, "|&")  && lineSize[strlen(lineSize) - 2] != '&')) {
+		args[0] = (char*)"sh";
+		args[1] = (char*)"-f";
+		args[2] = (char*)"-c";
+		args[3] = lineSize;
+		for (int i = 4; i<MAX_ARG; i++)
+		{
+			args[i] = NULL;
+		}
+		int pID;
+		switch (pID = fork()) {
+		case -1://error, no child process is created
+				// Add your code here (error)
 
-        /*
-        your code
-        */
-    }
+			perror("ExeComp - no child process was created.");
+			return 0;
+		case 0:
+			// Child Process
+			// Add your code here (execute an external command)
+			setpgrp();
+			execvp(args[0], args);
+			perror(" ExeComp - command didn't run.");
+			if (kill(pID, SIGTERM) == 0) {
+				printf("smash > signal SIGTERM was sent to pid %d\n", pID);
+			}
+			else perror("ExeComp - error in sending SIGTERM signal.");
+			return 0;
+
+		default: // parent
+				 // Add your code here
+			L_Fg_Cmd.pid = pID;
+			L_Fg_Cmd.name = args[0];
+			L_Fg_Cmd.suspend = false;
+			L_Fg_Cmd.start_time = time(NULL);
+			if (waitpid(pID, NULL, WUNTRACED) == -1) {
+				perror("ExeComp: waitpid failed!!!\n");
+			}
+			L_Fg_Cmd.pid = -1;
+			L_Fg_Cmd.name = "\0";
+			return 0;
+		}
+	}
     return -1;
 }
 //**************************************************************************************
@@ -432,69 +464,72 @@ int ExeComp(char* lineSize)
 // Parameters: command string, pointer to jobs
 // Returns: 0- BG command -1- if not
 //**************************************************************************************
-int BgCmd(char* lineSize, list<job>& jobs)
-{
-//  updateJobList();
-    string delimiters = " \t\n";
-    char *args[MAX_ARG];
+int BgCmd(char* lineSize, list<job>& jobs) {
+	//  updateJobList();
+	const char* delimiters = " \t\n";
+	char *args[MAX_ARG];
 
-    if (lineSize[strlen(lineSize)-2] == '&')
-    {
-        lineSize[strlen(lineSize)-2] = '\0';
-        // Add your code here (execute a in the background)
+	if (lineSize[strlen(lineSize) - 2] == '&')
+	{
+		lineSize[strlen(lineSize) - 2] = '\0';
+		// Add your code here (execute a in the background)
 
-//        check if command is complicated
-        if ((strstr(lineSize, "|")) || (strstr(lineSize, "<")) || (strstr(lineSize, ">"))
-            || (strstr(lineSize, "*")) || (strstr(lineSize, "?")) || (strstr(lineSize, ">>"))
-            || (strstr(lineSize, "|&")))
-        {
-            args[0] = (char*)"sh";
-            args[1] = (char*)"-f";
-            args[2] = (char*)"-c";
-            args[3] = lineSize;
+		if ((strstr(lineSize, "?")) || (strstr(lineSize, "<")) || (strstr(lineSize, ">"))
+			|| (strstr(lineSize, "|")) ||  (strstr(lineSize, "*")) ||  (strstr(lineSize, ">>"))
+			|| (strstr(lineSize, "|&")))
+		{
+			args[0] = (char*)"sh";
+			args[1] = (char*)"-f";
+			args[2] = (char*)"-c";
+			args[3] = lineSize;
+			for (int i = 4; i<MAX_ARG; i++)
+			{
+				args[i] = NULL;
+			}
 
-        }
-        else { // not complicated - separate command into args
-            args[0] = strtok(lineSize, delimiters);
-            if (args[0] == NULL)
-                return 0;
+		}
+		else { // not complicated - separate command into args
+			args[0] = strtok(lineSize, delimiters);
+			if (args[0] == NULL)
+				return 0;
 
-            for (int i=1; i<MAX_ARG; i++) {
-                args[i] = strtok(NULL, delimiters);
-            }
-        }
+			for (int i = 1; i < MAX_ARG; i++) {
+				args[i] = strtok(NULL, delimiters);
+			}
+		}
 
-        int pID;
-        switch(pID = fork())
-        {
-            case -1:
-                // error
-                perror("BgCmd - error in fork");
-                return -1;
-            case 0 :
-                // Child Process (execute an external command)
-                setpgrp();// each chlid should execute, it changes the group id.
-                execvp(args[0], args);
-                if (kill(pID, SIGTERM) == 0){
-                    printf("smash > signal SIGTERM was sent to pid %d\n", pID);
-                }
-                else perror("BgCmd - error in sending SIGTERM signal");
-                return -1;
+		int pID;
+		switch (pID = fork())
+		{
+		case -1:
+			// error
+			perror("BgCmd - error in fork");
+			return -1;
+		case 0:
+			// Child Process (execute an external command)
+			setpgrp();// each chlid should execute, it changes the group id.
+			execvp(args[0], args);
+			/*if (kill(pID, SIGTERM) == 0) {
+				printf("smash > signal SIGTERM was sent to pid %d\n", pID);
+			}
+			else perror("BgCmd - error in sending SIGTERM signal");*/
+			return -1;
 
-            default: //father
-                job new_job = job(args[0], pID, time(NULL), false);
-                jobs.push_back(new_job);
-                return 0;
-        }
-    }
+		default: //father
+			job new_job = job(args[0], pID, time(NULL), false);
+			jobs.push_back(new_job);
+			return 0;
+		}
+	}
+
     return -1; //command is not external& and not complicated&
 }
 
 //**************************************************************************************
 // function name: updateJobList
-// Description:
-// Parameters:
-// Returns:
+// Description: deletes finished jobs from job list
+// Parameters: jobs - list of job elements
+// Returns: none.
 //**************************************************************************************
 void updateJobList(list<job> & jobs){
 
