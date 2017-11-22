@@ -196,7 +196,8 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 /*************************************************/
     else if (!strcmp(cmd, "fg"))
     {
-		updateJobList(jobs);
+
+        updateJobList(jobs);
         if((num_arg != 0) && (num_arg != 1)){
             illegal_cmd = TRUE;
         }
@@ -207,17 +208,21 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 				return -1;
 			}
             else {
-                L_Fg_Cmd = *jobs.end();
+                L_Fg_Cmd = jobs.back();
+                printf("%d", jobs.back().pid);
                 jobs.pop_back();
             }
         }
         else {
             int command_number = atoi(args[1]);
-            if (command_number !=0 && jobs.size() <= command_number){
+			int size = jobs.size();
+			printf("test: command_number is %d job size is: %d\n", command_number, size);
+            if ( (0 < command_number) && (size <= command_number)){
                 list<job>:: iterator iter = jobs.begin();
                 advance(iter, command_number-1);
                 L_Fg_Cmd = *iter;
                 jobs.erase(iter);
+				printf("!!!!!!!!!!!!!!alive!!!\n");	
             } else {
                 perror("fg - wrong command number");
                 return -1;
@@ -534,5 +539,6 @@ void updateJobList(list<job> & jobs){
         if(waitpid(iter->pid, 0, WNOHANG) != 0){
             jobs.erase(iter);
         }
+
     }
 }
