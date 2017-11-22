@@ -76,8 +76,7 @@ int main(int argc, char *argv[])
             hist_flag = true;
             hist_iter = 0;
         }
-        strcpy(History[hist_iter], cmdString);
-        hist_iter++;
+
         // perform a complicated Command
         if (!ExeComp(lineSize)) continue;
         // background command

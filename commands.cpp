@@ -104,27 +104,25 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         else(printf("%s\n", pwd));
     }
 /*************************************************/
-    else if (!strcmp(cmd, "history"))
-    {
-        if (num_arg!= 0){
-            illegal_cmd = TRUE;
-        }
-        else{
-            if (hist_flag == TRUE){
-                for(i=0; i<MAX_HISTORY;i++)
-					if (i + hist_iter >= MAX_HISTORY) {
-						printf("%s\n", History[i + hist_iter- MAX_HISTORY]);
-					}
-					else {
-						printf("%s\n", History[i + hist_iter]);
-					}
-            } 
-            else {
-//              hist_iter didn't exceeded 50 iterations.
-                for (i=0; i<hist_iter; i++)
-                    printf("%s\n", History[i]);
-            }
-        }
+	else if (!strcmp(cmd, "history"))
+	{
+		if (num_arg != 0) {
+			illegal_cmd = TRUE;
+		}
+		else {
+			int iterator = hist_iter;
+			for (int i = 0; i < MAX_HISTORY; i++) {
+				if (strcmp(History[iterator], "\0") != 0) {
+					cout << History[iterator];
+				}
+				iterator++;
+				if (iterator == MAX_HISTORY) {
+					iterator = 0;
+				}
+			}
+			return 0;
+		}
+	
     }
 /*************************************************/
     else if (!strcmp(cmd, "jobs"))
@@ -339,29 +337,16 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
     {
         if(num_arg !=2)
             illegal_cmd = true;
-        else{
-            string old_name = args[1];
-            string new_name = args[2];
-            list<job>::iterator iter2;
-            for (list<job>::iterator iter1 = jobs.begin(); iter1 != jobs.end(); iter1++ ){
-                if (old_name == iter1->name){
-                    iter2 = iter1;
-                    old_name = "ok";
-                }
-                if (new_name!=iter1->name){
-                    new_name = "taken";
-                    break;
-                }
-            }
-            if (old_name == "ok" && new_name != "taken"){
-				cout << iter2->name << " has been renamed to " << new_name << endl;
-                iter2->name == new_name;
-            }
-            else{
-                perror("mv - can't find old name or new name already exists.");
-                return -1;
-            }
-        }
+		else {
+			if (rename(args[1], args[2])) {
+				perror("renaming failed");
+				return -1;
+			}
+			else {
+				cout << args[1] << " has been renamed to " << args[2] << " successfully"<< endl;
+			}
+		
+		}
     }
 /*************************************************/
     else // external command
