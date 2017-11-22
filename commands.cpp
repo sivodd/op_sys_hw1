@@ -24,7 +24,7 @@ extern char prev_dir[MAX_LINE_SIZE];
 //**************************************************************************************
 int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 {
-	printf("alive");
+
 	char* cmd;
     char* args[MAX_ARG];
     char pwd[MAX_LINE_SIZE];
@@ -142,7 +142,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 			}	
 			job_num++;
          }
-		return 0;
+		
     } 
 /*************************************************/
     else if (!strcmp(cmd, "kill"))
@@ -173,21 +173,19 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
             else {
                 list<job>:: iterator iter = jobs.begin();
                 advance(iter, job_num-1);
-				if (signum == SIGTSTP)
-					iter->suspend = TRUE;
-				if (signum == SIGCONT)
-					iter->suspend = FALSE;
-				
                 if(kill(iter->pid, signum) != 0){
                     cerr << "smash error: > \"kill\" " << job_num << " - cannot send signal" << endl;
                     return 1;
                 }
                 else{
                     printf("smash > signal number %d was sent to pid %d\n", signum, iter->pid);
-
+					if (signum == SIGTSTP)
+						iter->suspend = TRUE;
+					if (signum == SIGCONT)
+						iter->suspend = FALSE;
                 }
 
-				return 0;
+				
             }
 
         }
@@ -200,7 +198,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         } else {
             printf("smash > pid is %d\n", getpid());
         }
-		return 0;
+		
     }
 /*************************************************/
     else if (!strcmp(cmd, "fg"))
@@ -249,7 +247,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
           // perror(" fg - waitpid error");
         }
 		L_Fg_Cmd.pid = - 1;
-		return 0;
+		
     }
 /*************************************************/
     else if (!strcmp(cmd, "bg"))
@@ -294,7 +292,6 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
             L_Bg_Cmd.suspend = false;
 			cout << L_Bg_Cmd.name << endl;
 			updateJobList(jobs);
-			return 0;
         } else {
                 perror("smash error: > \"bg\" - error in SIGCONT signal ");
                 return 1;
@@ -341,12 +338,12 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
                         perror("smash error: > \"quit kill\" - error in SIGTERM signal");
                         return 1;
                     }
-					if (jobs.size() == 0 || iter == jobs.end()) {
-						break;
-					}
                 }
-            }
-			exit(-1);
+				exit(-1);
+			}
+			else {
+				illegal_cmd = true;
+			}	
         }
     }
 /*************************************************/
