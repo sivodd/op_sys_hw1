@@ -24,7 +24,8 @@ extern char prev_dir[MAX_LINE_SIZE];
 //**************************************************************************************
 int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 {
-    char* cmd;
+	printf("alive");
+	char* cmd;
     char* args[MAX_ARG];
     char pwd[MAX_LINE_SIZE];
 	const char* delimiters = " \t\n";
@@ -54,18 +55,18 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         else if(!strcmp(args[1], "-")) {
 //          prev_dir[0] must be / ???
             if (prev_dir[0] == 0) {
-                perror("cd - no previous dir.");
+                perror("smash error: > \"cd\" - no previous dir.");
                 return -1;
             }
 //          cd arg is "-"
             else if (getcwd(pwd, MAX_LINE_SIZE) == NULL) {
-                perror("cd - can't reach current dir");
-                return -1;
+                perror("smash error: > \"cd\" - can't reach current dir");
+                return 1;
             }
 //          pwd updated
             else if (chdir(prev_dir) == -1) {
-                cerr << "smash error: > " << args[1] << "- path not found" << endl;
-                return -1;
+                cerr << "smash error: > \"cd\" " << args[1] << "- path not found" << endl;
+                return 1;
             }
 //          current working dir updated
             else {
@@ -76,13 +77,13 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         else {
 //          remembering the current dir before we switch to the new one
             if (getcwd(pwd, MAX_LINE_SIZE) == NULL) {
-                perror("cd - can't reach current dir");
-                return -1;
+                perror("smash error: > \"cd\" - can't reach current dir");
+                return 1;
             }
 //          changing working dir to args[1]
             if(chdir(args[1]) == -1){
-                cerr << "smash error: > " << args[1] << "- path not found" << endl;
-                return -1;
+                cerr << "smash error: > \"cd\" " << args[1] << "- path not found" << endl;
+                return 1;
             }
 //          opened new dir - copy old pwd to prev_dir
             strcpy(prev_dir, pwd);
@@ -99,7 +100,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 //      get current working dir
         else if (getcwd(pwd, MAX_LINE_SIZE)==NULL) {
             perror("pwd - can't read current directory");
-            return -1;
+            return 1;
         }
         else(printf("%s\n", pwd));
     }
@@ -125,11 +126,13 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 /*************************************************/
     else if (!strcmp(cmd, "jobs"))
     {
-        if (num_arg != 0){
+
+		if (num_arg != 0){
             illegal_cmd = TRUE;
         }
         updateJobList(jobs);
-        int job_num = 1;
+
+		int job_num = 1;
         for(list<job> ::iterator iter = jobs.begin(); iter != jobs.end(); iter++){///////////////////////supposed to be only not done jobs, does  it do that?
 			if (iter->suspend == TRUE) {
 				cout << "[" << job_num << "] " << iter->name << " : " << iter->pid << " " << difftime(time(NULL), iter->start_time) << " secs (Stopped)" << endl;
@@ -139,6 +142,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 			}	
 			job_num++;
          }
+		return 0;
     } 
 /*************************************************/
     else if (!strcmp(cmd, "kill"))
@@ -147,39 +151,43 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
             illegal_cmd = TRUE;
         }
         else {
+			updateJobList(jobs);
             int signum = atoi(strtok(args[1], "-"));
 //          if atoi signum failed
             if (signum == 0 ){
-                perror("kill - signum wasn't entered correctly");
-                return -1;
+                perror("smash error: > \"kill\" - signum wasn't entered correctly");
+                return 1;
             }
             int job_num = atoi(args[2]);
 //          if atoi job_num fails
             if (job_num == 0){
-                perror("kill - illegal job number");
+                perror("smash error: > \"kill\" - illegal job number");
                 return -1;
             }
 //          does job num exist
             else if (job_num < 1 || job_num > jobs.size()){
-                cerr << "smash error: > kill " << job_num << " - job does not exist" << endl;
-                return -1;
+                cerr << "smash error: > \"kill\" " << job_num << " - job does not exist" << endl;
+                return 1;
             }
 //          job_num exists
             else {
                 list<job>:: iterator iter = jobs.begin();
                 advance(iter, job_num-1);
+				if (signum == SIGTSTP)
+					iter->suspend = TRUE;
+				if (signum == SIGCONT)
+					iter->suspend = FALSE;
+				
                 if(kill(iter->pid, signum) != 0){
-                    cerr << "smash error: > kill " << job_num << " - cannot send signal" << endl;
-                    return -1;
+                    cerr << "smash error: > \"kill\" " << job_num << " - cannot send signal" << endl;
+                    return 1;
                 }
                 else{
-                    printf("smash > signal number %d was sent to pid %d\n", signum, iter->pid);/////////////// do we need to print "smash >"
-					if (signum == SIGTSTP)
-						iter->suspend = TRUE;
-					if (signum == SIGCONT)
-						iter->suspend = FALSE;
-					updateJobList(jobs);
+                    printf("smash > signal number %d was sent to pid %d\n", signum, iter->pid);
+
                 }
+
+				return 0;
             }
 
         }
@@ -190,8 +198,9 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         if(num_arg !=0 ){
             illegal_cmd = TRUE;
         } else {
-            printf("smash pid is %d\n", getpid());
+            printf("smash > pid is %d\n", getpid());
         }
+		return 0;
     }
 /*************************************************/
     else if (!strcmp(cmd, "fg"))
@@ -203,27 +212,27 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 
         else if(num_arg == 0) {
 			if (jobs.size() == 0) {
-				perror(" fg - no jobs in bg");
-				return -1;
+				perror("smash error: > \"fg\" - no jobs in bg");
+				return 1;
 			}
             else {
-                L_Fg_Cmd = *jobs.end();
+                L_Fg_Cmd = jobs.back();
                 jobs.pop_back();
             }
         }
         else {
             int command_number = atoi(args[1]);
 			int size = jobs.size();
-			printf("test: command_number is %d job size is: %d\n", command_number, size);
-            if ( (0 < command_number) && (size <= command_number)){
-                list<job>:: iterator iter = jobs.begin();
+            if ( (0 < command_number) && (command_number <= size)){
+				list<job>:: iterator iter = jobs.begin();
                 advance(iter, command_number-1);
                 L_Fg_Cmd = *iter;
                 jobs.erase(iter);
-				printf("!!!!!!!!!!!!!!alive!!!\n");	
-            } else {
-                perror("fg - wrong command number");
-                return -1;
+				
+            } 
+			else {
+                perror("smash error: > \"fg\" - wrong command number");
+                return 1;
             }
         }
         if (L_Fg_Cmd.suspend == TRUE) {
@@ -231,8 +240,8 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
                 printf("smash > signal SIGCONT was sent to pid %d \n", L_Fg_Cmd.pid);
                 L_Fg_Cmd.suspend = false;
             } else {
-                perror("fg - error in SIGCONT signal ");
-                return -1;
+                perror("smash error: > \"fg\" - error in SIGCONT signal ");
+                return 1;
             }
         }
 		cout << L_Fg_Cmd.name << endl;
@@ -240,6 +249,7 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
           // perror(" fg - waitpid error");
         }
 		L_Fg_Cmd.pid = - 1;
+		return 0;
     }
 /*************************************************/
     else if (!strcmp(cmd, "bg"))
@@ -256,36 +266,38 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
 				}
 			}
 			if (iter->suspend == false) {
-				perror("smash error: no bg suspended jobs");
-				return -1;
+				perror("smash error: > \"bg\" no bg suspended jobs");
+				return 1;
 			}
 			
         }
         else // num args == 1
         {
             int command_number = atoi(args[1]);
-            if (command_number != 0 && jobs.size() <= command_number) {
+			int size = jobs.size();
+            if (command_number != 0 && command_number <= size) {
                 list<job>::iterator iter = jobs.begin();
                 advance(iter, command_number - 1);
                 if (iter->suspend == FALSE) {
-                    cerr << "bg command number -" << command_number << "is already in bg" << endl;
-                    return -1;
+                    cerr << "smash error: > \"bg\" command number " << command_number << " is already in bg" << endl;
+                    return 1;
                 } else {
                     L_Bg_Cmd = *iter;
                 }
             } else {
-                perror("bg - wrong command number");
-                return -1;
+                perror("smash error: > \"bg\" - wrong command number");
+                return 1;
             }
         }
         if (kill(L_Bg_Cmd.pid, SIGCONT) == 0) {
             printf("smash > signal SIGCONT was sent to pid %d \n", L_Bg_Cmd.pid);
             L_Bg_Cmd.suspend = false;
 			cout << L_Bg_Cmd.name << endl;
+			updateJobList(jobs);
 			return 0;
         } else {
-                perror("bg - error in SIGCONT signal ");
-                return -1;
+                perror("smash error: > \"bg\" - error in SIGCONT signal ");
+                return 1;
             }
     }
 /*************************************************/
@@ -326,11 +338,15 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
                     }
                         // sigterm wasn't sent
                     else {
-                        perror(" quit kill - error in SIGTERM signal");
-                        return -1;
+                        perror("smash error: > \"quit kill\" - error in SIGTERM signal");
+                        return 1;
                     }
+					if (jobs.size() == 0 || iter == jobs.end()) {
+						break;
+					}
                 }
-            } else (illegal_cmd = true);
+            }
+			exit(-1);
         }
     }
 /*************************************************/
@@ -340,8 +356,8 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
             illegal_cmd = true;
 		else {
 			if (rename(args[1], args[2])) {
-				perror("renaming failed");
-				return -1;
+				perror("smash error: > \"mv\" renaming failed");
+				return 1;
 			}
 			else {
 				cout << args[1] << " has been renamed to " << args[2] << " successfully"<< endl;
@@ -516,6 +532,7 @@ int BgCmd(char* lineSize, list<job>& jobs) {
 			return -1;
 
 		default: //father
+			updateJobList(jobs);
 			job new_job = job(args[0], pID, time(NULL), false);
 			jobs.push_back(new_job);
 			return 0;
@@ -537,5 +554,7 @@ void updateJobList(list<job> & jobs){
         if(waitpid(iter->pid, 0, WNOHANG) != 0){
             jobs.erase(iter);
         }
+		if (jobs.size() == 0 || iter == jobs.end()) 
+			break;
     }
 }
