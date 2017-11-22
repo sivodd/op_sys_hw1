@@ -213,11 +213,14 @@ int ExeCmd(list<job>& jobs, char* lineSize, char* cmdString)
         }
         else {
             int command_number = atoi(args[1]);
-            if (command_number !=0 && jobs.size() <= command_number){
+			int size = jobs.size();
+			printf("test: command_number is %d job size is: %d\n", command_number, size);
+            if ( (0 < command_number) && (size <= command_number)){
                 list<job>:: iterator iter = jobs.begin();
                 advance(iter, command_number-1);
                 L_Fg_Cmd = *iter;
                 jobs.erase(iter);
+				printf("!!!!!!!!!!!!!!alive!!!\n");	
             } else {
                 perror("fg - wrong command number");
                 return -1;
