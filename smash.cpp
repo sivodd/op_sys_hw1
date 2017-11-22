@@ -24,7 +24,6 @@ extern char cmdString[MAX_LINE_SIZE];
 extern char lineSize[MAX_LINE_SIZE];
 extern char History[MAX_HISTORY][MAX_LINE_SIZE];
 extern int hist_iter;
-extern bool hist_flag;
 extern char prev_dir[MAX_LINE_SIZE];
 
 
@@ -61,7 +60,6 @@ int main(int argc, char *argv[])
     // Init globals
     
     hist_iter = 0;
-    hist_flag = false;
 	
 
     while (1) {
@@ -69,11 +67,11 @@ int main(int argc, char *argv[])
         printf("smash > ");
         fgets(lineSize, MAX_LINE_SIZE, stdin);
         strcpy(cmdString, lineSize);
+		cmdString[strlen(lineSize) - 1] = '\0'; // why do we need cmdstring? do we need this after every strcpy?
 		strcpy(History[hist_iter], cmdString);//updating his with new comm
 		hist_iter++;//updating history indicator to a new empty slot 
-        cmdString[strlen(lineSize) - 1] = '\0'; // why do we need cmdstring? do we need this after every strcpy?
+       
         if (hist_iter == MAX_HISTORY){
-            hist_flag = true;
             hist_iter = 0;
         }
 

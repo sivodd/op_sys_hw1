@@ -24,6 +24,7 @@ void signal_int_fg(int Signal_number)
 	if (L_Fg_Cmd.pid != -1) {
 		if (kill(L_Fg_Cmd.pid, SIGTSTP) == 0) {
 			cout << "smash > signal SIGTSTP was sent to pid " << L_Fg_Cmd.pid << endl;
+		
 		}
 		else
 			perror("smash error: > can't send signal\n");
@@ -47,6 +48,7 @@ void signal_stop_fg(int Signal_number)
 		else
 			perror("smash error: > can't send signal\n");
 	}
+	L_Fg_Cmd.suspend = true;
 	jobs.push_back(L_Fg_Cmd);
 	L_Fg_Cmd.pid = -1;
 	L_Fg_Cmd.name = "\0";
